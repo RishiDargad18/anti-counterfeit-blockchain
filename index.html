@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Product Verification</title>
+</head>
+<body>
+
+<h2>Register Product</h2>
+<input id="pid" placeholder="Product ID"><br>
+<input id="name" placeholder="Name"><br>
+<input id="manu" placeholder="Manufacturer"><br>
+<button onclick="register()">Register</button>
+
+<h2>Verify Product</h2>
+<input id="vid" placeholder="Product ID"><br>
+<button onclick="verify()">Verify</button>
+
+<p id="result"></p>
+
+<script src="https://cdn.jsdelivr.net/npm/ethers@6.6.2/dist/ethers.umd.min.js"></script>
+
+<script>
+const contractAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+
+const abi = [
+  "function registerProduct(string,string,string)",
+  "function verifyProduct(string) view returns (bool,string,string,bytes32)"
+];
+
+let provider, signer, contract;
+
+async function init() {
+  if (!window.ethereum) {
+    alert("Install MetaMask!");
+    return;
+  }
+
+  provider = new ethers.BrowserProvider(window.ethereum);
+  signer = await provider.getSigner();
+  contract = new ethers.Contract(contractAddress, abi, signer);
+}
+
+async function register() {
+  const pid = document.getElementById("pid").value;
+  const name = document.getElementById("name").value;
+  const manu = document.getElementById("manu").value;
+
+  const tx = await contract.registerProduct(pid, name, manu);
+  await tx.wait();
+
+  alert("Registered!\nTx Hash: " + tx.hash);
+}
+
+async function verify() {
+  const pid = document.getElementById("vid").value;
+
+  const res = await contract.verifyProduct(pid);
+
+  if (res[0]) {
+    document.getElementById("result").innerHTML =
+      "Authentic ✅<br>Name: " + res[1] +
+      "<br>Manufacturer: " + res[2] +
+      "<br>Hash: " + res[3];
+  } else {
+    document.getElementById("result").innerHTML = "Fake ❌";
+  }
+}
+
+init();
+</script>
+
+</body>
+</html>
