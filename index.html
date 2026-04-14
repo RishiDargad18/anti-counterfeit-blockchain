@@ -1,33 +1,159 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Product Verification</title>
+  <title>Anti-Counterfeit Pro</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.6.2/dist/ethers.umd.min.js"></script>
+  
+
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI';
+      background: #0f2027;
+      color: white;
+      text-align: center;
+      overflow-x: hidden;
+    }
+
+    /* 🌌 Particle background */
+    canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: -1;
+    }
+
+    h1 {
+      margin-top: 20px;
+      font-size: 2.5rem;
+      text-shadow: 0 0 20px cyan;
+    }
+
+    .container {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .card {
+      background: rgba(255,255,255,0.08);
+      backdrop-filter: blur(15px);
+      border-radius: 20px;
+      padding: 20px;
+      margin: 20px;
+      width: 320px;
+      box-shadow: 0 0 30px rgba(0,255,255,0.3);
+      transition: 0.3s;
+    }
+
+    .card:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 50px cyan;
+    }
+
+    input {
+      width: 90%;
+      padding: 12px;
+      margin: 8px;
+      border-radius: 12px;
+      border: none;
+      outline: none;
+    }
+
+    button {
+      padding: 10px 20px;
+      border-radius: 20px;
+      border: none;
+      background: linear-gradient(45deg, cyan, blue);
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    button:hover {
+      transform: scale(1.1);
+      box-shadow: 0 0 20px cyan;
+    }
+
+    #result {
+      margin-top: 30px;
+      font-size: 2rem;
+    }
+
+    .success {
+      color: #00ffcc;
+      text-shadow: 0 0 15px #00ffcc;
+      animation: pop 0.3s ease;
+    }
+
+    .fail {
+      color: #ff4d4d;
+      text-shadow: 0 0 15px red;
+      animation: pop 0.3s ease;
+    }
+
+    .warning {
+      color: orange;
+      font-size: 1.2rem;
+    }
+
+    @keyframes pop {
+      0% { transform: scale(0.5); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    #reader {
+      width: 250px;
+      margin: auto;
+      margin-top: 10px;
+    }
+  </style>
 </head>
+
 <body>
 
-<h2>Register Product</h2>
-<input id="pid" placeholder="Product ID"><br>
-<input id="name" placeholder="Name"><br>
-<input id="manu" placeholder="Manufacturer"><br>
-<button onclick="register()">Register</button>
+<canvas id="bg"></canvas>
 
-<h2>Verify Product</h2>
-<input id="vid" placeholder="Product ID"><br>
-<button onclick="verify()">Verify</button>
+<h1>🔗 Anti-Counterfeit Pro</h1>
 
-<p id="result"></p>
+<div class="container">
 
-<script src="https://cdn.jsdelivr.net/npm/ethers@6.6.2/dist/ethers.umd.min.js"></script>
+  <div class="card">
+    <h3>Register Product</h3>
+    <input id="pid" placeholder="Product ID">
+    <input id="name" placeholder="Name">
+    <input id="manu" placeholder="Manufacturer">
+    <button onclick="register()">Register</button>
+  </div>
+
+  <div class="card">
+    <h3>Verify Product</h3>
+    <input id="vid" placeholder="Product ID">
+    <input id="vname" placeholder="Name">
+    <input id="vmanu" placeholder="Manufacturer">
+    <button onclick="verify()">Verify</button>
+
+  </div>
+
+</div>
+
+<div id="result"></div>
 
 <script>
-const contractAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+const contractAddress = "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9";
 
 const abi = [
   "function registerProduct(string,string,string)",
-  "function verifyProduct(string) view returns (bool,string,string,bytes32)"
+  "function verifyProduct(string,string,string) view returns (bool)"
 ];
 
 let provider, signer, contract;
+
+function clean(input) {
+  return input.trim().toLowerCase();
+}
 
 async function init() {
   if (!window.ethereum) {
@@ -36,35 +162,92 @@ async function init() {
   }
 
   provider = new ethers.BrowserProvider(window.ethereum);
+  await provider.send("eth_requestAccounts", []);
   signer = await provider.getSigner();
   contract = new ethers.Contract(contractAddress, abi, signer);
 }
 
+// ✅ REGISTER (works with MetaMask)
 async function register() {
-  const pid = document.getElementById("pid").value;
-  const name = document.getElementById("name").value;
-  const manu = document.getElementById("manu").value;
+  try {
+    const pid = clean(document.getElementById("pid").value);
+    const name = clean(document.getElementById("name").value);
+    const manu = clean(document.getElementById("manu").value);
 
-  const tx = await contract.registerProduct(pid, name, manu);
-  await tx.wait();
+    const tx = await contract.registerProduct(pid, name, manu);
+    await tx.wait();
 
-  alert("Registered!\nTx Hash: " + tx.hash);
-}
+    alert("✅ Registered!\nTx: " + tx.hash);
 
-async function verify() {
-  const pid = document.getElementById("vid").value;
-
-  const res = await contract.verifyProduct(pid);
-
-  if (res[0]) {
-    document.getElementById("result").innerHTML =
-      "Authentic ✅<br>Name: " + res[1] +
-      "<br>Manufacturer: " + res[2] +
-      "<br>Hash: " + res[3];
-  } else {
-    document.getElementById("result").innerHTML = "Fake ❌";
+  } catch (err) {
+    console.log(err);
+    alert("❌ " + (err.reason || "Transaction failed"));
   }
 }
+
+// ✅ VERIFY (NO MetaMask popup)
+async function verify() {
+  try {
+    const pid = clean(document.getElementById("vid").value);
+    const name = clean(document.getElementById("vname").value);
+    const manu = clean(document.getElementById("vmanu").value);
+
+    const result = await contract.verifyProduct.staticCall(pid, name, manu);
+
+    if (result) {
+      document.getElementById("result").innerHTML =
+        "<div class='success'>Authentic ✅</div>";
+    } else {
+      document.getElementById("result").innerHTML =
+        "<div class='fail'>Fake ❌</div>";
+    }
+
+  } catch (err) {
+    console.log(err);
+    document.getElementById("result").innerHTML =
+      "<div class='fail'>Error ❌</div>";
+  }
+}
+
+/* 🌌 Particle Animation */
+const canvas = document.getElementById("bg");
+const ctx = canvas.getContext("2d");
+
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+let particles = [];
+
+for (let i = 0; i < 80; i++) {
+  particles.push({
+    x: Math.random() * canvas.width,
+    y: Math.random() * canvas.height,
+    r: Math.random() * 2,
+    dx: Math.random() - 0.5,
+    dy: Math.random() - 0.5
+  });
+}
+
+function animate() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  particles.forEach(p => {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    ctx.fillStyle = "cyan";
+    ctx.fill();
+
+    p.x += p.dx;
+    p.y += p.dy;
+
+    if (p.x < 0 || p.x > canvas.width) p.dx *= -1;
+    if (p.y < 0 || p.y > canvas.height) p.dy *= -1;
+  });
+
+  requestAnimationFrame(animate);
+}
+
+animate();
 
 init();
 </script>
