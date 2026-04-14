@@ -173,4 +173,4 @@ http://localhost:5500
 
 ## 👨‍💻 Author
 
-* Your Name
+* Rishi Dargad
